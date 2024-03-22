@@ -47,7 +47,7 @@ Since the panel with all important details of the construction plan (page number
 1. Same as above but:
     1. Multiple Augmentations: rotation, scale, translation, random flips. While I don't think they represent possible samples in future it should reduce overfitting
     2. Result are not satifactory especially low number of recall of rooms:  
-    <img src="https://github.com/mlkonopelski/construction_plan_analyzer/blob/main/readme-resources/yolo-seg-result1.png" width="400"> <img src="https://github.com/mlkonopelski/construction_plan_analyzer/blob/main/readme-resources/yolo-seg-result2.png" width="400">
+    <img src="https://github.com/mlkonopelski/construction_plan_analyzer/blob/main/readme-resources/yolo-seg-result1.png" width="250"> <img src="https://github.com/mlkonopelski/construction_plan_analyzer/blob/main/readme-resources/yolo-seg-result2.png" width="250">
 
 ### OCR "Page Info"
 As a easier solution I firstly cut that panel at size common for all training samples. The bbox detection of it was created in case that panel changes position.
