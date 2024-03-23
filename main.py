@@ -5,9 +5,19 @@ import cv2
 import easyocr
 import numpy as np
 from dateutil.parser import parse
+from fastapi import (Depends, FastAPI, File, Header, HTTPException, Request,
+                     UploadFile)
+from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.templating import Jinja2Templates
 from pdf2image import convert_from_bytes, convert_from_path
 from PIL import Image
 from ultralytics import YOLO
+
+import utils.tools as tools
+
+from utils.authorization import verify_auth
+from utils.config import Settings, get_settings
+from enum import Enum
 
 
 class IMG:
@@ -202,6 +212,84 @@ class InfoExtraction:
         json.update(self.page_info)
         return json
 
+
+#---------------------------------------------
+#           RUN APP
+#---------------------------------------------
+
+# API
+app = FastAPI(title='TrueBuilt Helper`', 
+              description='API for Construction Plans', 
+              version='1.0', 
+              debug=True)
+
+
+@app.on_event('startup')
+async def load_models():
+    tools.detection = Detection('yolov8m')
+    tools.info_extraction = InfoExtraction('yolov8m')
+
+
+# TODO: Create Home screen with API description
+@app.get("/")
+def read_root():
+    return {"Hello": "TrueBuilt"}
+
+
+@app.post('/rooms/') # http POST
+async def rooms_view(file: UploadFile = File(...),
+                     authorization = Header(None),
+                     settings: Settings() = Depends(get_settings)
+                    ):
+    verify_auth(authorization, settings)
+
+    bytes_str = await file.read()
+
+    try:
+        pages = IMG(bytes_str).pages
+        for page in pages:
+            page_resized = IMG.resize_image(page)
+            tools.detection.run(page_resized, page.size)
+            r_json = tools.detection.format_to_json(file.filename)
+
+    except Exception as e:
+        raise HTTPException(detail=f'{e}', 
+                            status_code=400)
+    
+    return r_json
+
+    
+class PageInfoMethod(str, Enum):
+    fix_crop = 'fix_crop'
+    detection = 'detection'
+
+@app.post('/page_info/') # http POST
+async def page_info_view(file: UploadFile = File(...),
+                         find_page_info_method: PageInfoMethod = 'detection',
+                         authorization = Header(None),
+                         settings: Settings() = Depends(get_settings)
+                          ):
+
+    verify_auth(authorization, settings)
+    assert find_page_info_method in ['fix_crop', 'detection'], 'Only possible methods: ["fix_crop", "detection"]'
+
+    bytes_str = await file.read()
+
+    try:
+        pages = IMG(bytes_str).pages
+        for page in pages:
+            if find_page_info_method == 'fix_crop':
+                page_cropped = IMG.cut_page_info(page)
+            elif find_page_info_method == 'detection':
+                page_cropped = tools.detection.cut_page_info(page)
+                page_cropped.save('page_cropped.jpg', 'JPEG')
+            tools.info_extraction.run(page_cropped)
+            r_json = tools.info_extraction.format_to_json(file.filename)
+
+    except Exception as e:
+        raise HTTPException(detail=f'{e}', status_code=400)
+
+    return r_json
 
 
 if __name__ == '__main__':
