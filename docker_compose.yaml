@@ -1,0 +1,10 @@
+version: '3'
+
+services:
+  rest_api:
+    container_name: 'true-built-ai'
+    image: 'truebuilt/construction_plan_analyzer:1.0'
+    build: .
+    restart: always
+    ports:
+      - 8008:8000

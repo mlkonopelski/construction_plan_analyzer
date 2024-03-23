@@ -5,10 +5,20 @@
 
 ## TL;DR
 The easier way to run this system is by:
+visit [Hello TrueBuilt](http://18.184.182.126) to check if API is working (My EC2 could stop because some maintance or exceeding treshold)
+
+Clone this repository: `https://github.com/mlkonopelski/construction_plan_analyzer.git` or use or own example .pdf 
+
+### Page Info retrieval:
 ```
-curl -X POST -F "image=@extracted_page_xyz.png"  "http://localhost:3000/run-inference?type=wall" #TODO
+curl -X POST -F "file=@data/test/A-492.pdf" -F "find_page_info_method=detection" -H "authorization: Bearer TOKEN" http://18.184.182.126/page_info/
+```   
+### Rooms detector
 ```
-the token was provided by email to: **Vin**. Please don't ruin me on AWS fees :) 
+curl -X POST -F "file=@data/test/A-492.pdf"  -H "authorization: Bearer TOKEN" http://18.184.182.126/rooms/
+```   
+
+the token was provided by email to: **Vin**. The inferance can take a bit of time because I used cheap t2.large.
 
 
 ## Aproach 
@@ -54,3 +64,22 @@ As a easier solution I firstly cut that panel at size common for all training sa
 1. All 7 training examples were slightly augmented and used for training bounding boxes. I tried YOLOv8 nano, small and medium and surprisingly only medium was giving good results (I anticipated that nano would be suffficient). 
 The model gives sufficient results on `A-192` and `A-492` test images:  
 <img src="https://github.com/mlkonopelski/construction_plan_analyzer/blob/main/data/predictions/page-info-det/A-192.png" width="200"> <img src="https://github.com/mlkonopelski/construction_plan_analyzer/blob/main/data/predictions/page-info-det/A-492.png" width="200">
+
+
+
+# RUN the detection software locally
+### Using pre-built docker image
+```
+docker pull public.ecr.aws/i5l4l1q2/true-built:latest
+docker run -d -p 8008:8000 --name true-built-ai public.ecr.aws/i5l4l1q2/true-built:latest
+
+curl -X POST -F "file=@data/test/A-492.pdf" -F "find_page_info_method=detection" -H "authorization: Bearer TOKEN" http://localhost:8008/page_info/
+```
+### Build from source
+```
+git clone https://github.com/mlkonopelski/construction_plan_analyzer.git
+cd construction_plan_analyzer
+docker compose -f docker_compose.yaml up --build --detach
+
+curl -X POST -F "file=@data/test/A-492.pdf" -F "find_page_info_method=detection" -H "authorization: Bearer TOKEN" http://localhost:8008/page_info/
+```

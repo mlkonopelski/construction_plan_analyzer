@@ -1,0 +1,31 @@
+# EC2 instance: ubuntu@ec2-18-184-182-126.eu-central-1.compute.amazonaws.com
+
+sudo apt-get update
+
+sudo apt-get install -y \
+        build-essential \
+        python3-dev \
+        python3-setuptools \
+        ffmpeg \
+        libsm6 \
+        libxext6 \
+        poppler-utils \
+        make \
+        gcc
+
+sudo apt install python3-pip
+
+git clone https://github.com/mlkonopelski/construction_plan_analyzer.git
+cd construction_plan_analyzer/
+pip3 install -r requirements.txt
+
+sudo apt install -y nginx
+sudo vim /etc/nginx/sites-enabled/fastapi_nginx
+sudo service nginx restart
+
+tmux new -s fastapi_window
+/home/ubuntu/.local/bin/uvicorn main:app
+
+
+# When come back and want to stop
+tmux a -t fastapi_window 
