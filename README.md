@@ -58,6 +58,11 @@ Since the panel with all important details of the construction plan (page number
     1. Multiple Augmentations: rotation, scale, translation, random flips. While I don't think they represent possible samples in future it should reduce overfitting
     2. Result are not satifactory especially low number of recall of rooms:  
     <img src="https://github.com/mlkonopelski/construction_plan_analyzer/blob/main/readme-resources/yolo-seg-result1.png" width="250"> <img src="https://github.com/mlkonopelski/construction_plan_analyzer/blob/main/readme-resources/yolo-seg-result2.png" width="250">
+1. This approach is kinda crazy. Looking at those PDF I realized that they are so big because they include vectors so all the details like walls and text. I don't know how to do it with python but I extracted those vectors using Inkscape:  
+<img src="https://github.com/mlkonopelski/construction_plan_analyzer/blob/main/readme-resources/inkscape-ps.png" width="250">  
+and the underlying data looks like this:  
+<img src="https://github.com/mlkonopelski/construction_plan_analyzer/blob/main/readme-resources/inkscape-vectors1.png" width="200"><img src="https://github.com/mlkonopelski/construction_plan_analyzer/blob/main/readme-resources/inkscape-vectors2.png" width="200"><img src="https://github.com/mlkonopelski/construction_plan_analyzer/blob/main/readme-resources/inkscape-vectors3.png" width="200">   
+I don't have expertise but maybe it can be used with semi-suprvised learning to find walls and later build rooms inside
 
 ### OCR "Page Info"
 As a easier solution I firstly cut that panel at size common for all training samples. The bbox detection of it was created in case that panel changes position.
