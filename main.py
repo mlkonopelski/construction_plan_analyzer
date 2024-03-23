@@ -1,5 +1,5 @@
 import os
-from typing import Dict, Tuple
+from typing import Dict, Tuple, Union
 
 import cv2
 import easyocr
@@ -20,12 +20,26 @@ class IMG:
         return page.resize(target_size, Image.Resampling.LANCZOS)
     
     @staticmethod
-    def cut_page_info(page: Image) -> Image:
-        H = 4000
-        W = 2000
+    def cut_page_info(page: Image, WH:Tuple[int]=(2000, 4000), WH_RATIO: Union[Tuple[int], None]=None) -> Image:
+
+        # PFD comes with different size from curl than original. #TODO: Explore it
+        # page = page.resize((2400,  1800), Image.Resampling.LANCZOS)
+        # w_ratio, h_ratio is typical ratio for panel
+        # h_ratio = 4000 / 18000
+        # w_ratio = 2000 / 24000
+        # crop_x, crop_y = page_w - int(page_w*w_ratio), page_h - int(page_h*h_ratio)
+        
         page_w, page_h = page.size
-        crop_x, crop_y = page_w - W, page_h - H
-        return page.crop((crop_x, crop_y, page_w, page_h))
+        if WH:
+            W, H = WH
+            crop_x, crop_y = page_w - W, page_h - H
+        elif WH_RATIO:
+            W_RATIO, H_RATIO = WH_RATIO
+            crop_x, crop_y = page_w - int(page_w*W_RATIO), page_h - int(page_h*H_RATIO)
+            
+        page = page.crop((crop_x, crop_y, page_w, page_h))
+
+        return page
 
 
 class Detection:
@@ -42,10 +56,32 @@ class Detection:
             self.model = YOLO(os.path.join('.models', 'yolov8m-seg.pt'))
     
     
-    def run(self, identifier: str, img: Image, orig_size: Tuple[int, int]) -> None:
+    def cut_page_info(self, img: Image):
         
-        self.identifier = identifier
+        W, H = img.size
+        result = self.model(img)[0]
+        boxes_count = result.boxes.shape[0]
+        best_bbox_score = 0
+        crop_bbox = None
+        for bbox_id in range(boxes_count):
+            label = result.boxes.cls[bbox_id].item()
+            conf = result.boxes.conf[bbox_id].item()
+            if label==0 and conf> best_bbox_score:
+                crop_bbox = result.boxes.xyxy[bbox_id].cpu().tolist()
+                # x1_n, y1_n, x2_n, y2_n = result.boxes.xyxyn[bbox_id].cpu().tolist()
+                best_bbox_score = conf
+        if crop_bbox:
+            # x1, y1, x2, y2 = x1_n*W, y1_n*H, x2_n*W, y2_n*H
+            img_cropped = img.crop((crop_bbox[0] - 10, crop_bbox[1] - 10, W, H))
+        else:
+            # in case detection algorithm didn't find any bbox
+            img_cropped = IMG.cut_page_info(img)
         
+        return img_cropped
+            
+    
+    def run(self, img: Image, orig_size: Tuple[int, int]) -> None:
+            
         result = self.model(img)[0]
         
         det = []
@@ -68,11 +104,11 @@ class Detection:
             
         self.det = det
         
-    def format_to_json(self) -> Dict:
+    def format_to_json(self, file_name: str) -> Dict:
         
         json = {
             "type": "rooms",
-            "imageId": self.identifier,
+            "imageId": file_name,
             "detectionResults": {
                 "rooms": self.det
                     }
@@ -98,8 +134,7 @@ class InfoExtraction:
         gray = cv2.cvtColor(np.array(img) , cv2.COLOR_RGB2GRAY)
         results = self.reader.readtext(gray)
         for result in results:
-            if result[2] > 0.5:
-                result_str += ' ' + result[1]
+            result_str += ' ' + result[1]
     
         return result_str.lstrip()  # remove empty space in case result is just one word
     
@@ -120,13 +155,13 @@ class InfoExtraction:
                 'do nothing'
             # We assume that If no conditions above are true the string is description
             revision['description'] = result[1]
-            
+        
+        if not len(revision.keys()) == 3:
+            revision = {}
         return revision
-                
-        
-    def run(self, identifier: str, img: Image) -> None:
-        self.identifier = identifier
-        
+
+    def run(self, img: Image) -> None:
+
         names = self.model.names
         result = self.model(img)[0]
         
@@ -145,9 +180,11 @@ class InfoExtraction:
                     if names[cls_] == 'sheet_number' and conf > sheet_number_conf: # Just to make sure we take bbox with largest conf    
                         img_to_ocr = img.crop((box[0], box[1], box[2], box[3]))
                         page_info['sheet_number'] = self._ocr_img(img_to_ocr)
+                        sheet_number_conf = conf
                     elif names[cls_] == 'sheet_name' and conf > sheet_name_conf:
                         img_to_ocr = img.crop((box[0], box[1], box[2], box[3]))
                         page_info['sheet_name'] = self._ocr_img(img_to_ocr)
+                        sheet_name_conf = conf
                     elif names[cls_] == 'revision':
                         img_to_ocr = img.crop((box[0], box[1], box[2], box[3]))
                         revision = self._ocr_revisions(img_to_ocr)
@@ -160,8 +197,11 @@ class InfoExtraction:
             
         self.page_info = page_info
         
-    def format_to_json(self):
-        return self.page_info
+    def format_to_json(self, file_name: str) -> Dict:
+        json = {"imageId": file_name}
+        json.update(self.page_info)
+        return json
+
 
 
 if __name__ == '__main__':
@@ -171,16 +211,20 @@ if __name__ == '__main__':
 
     IMG_SIZE = (2400,  1800)
 
-    FILE = 'A-492.pdf' # A-192.pdf, A-492.pdf
+    FILE = 'A-192.pdf' # A-192.pdf, A-492.pdf
     TEST_PATH = os.path.join('data', 'test')
+    
+    FILE = '_13.pdf'
+    TEST_PATH = 'data/original/rooms'
 
     pages = convert_from_path(os.path.join(TEST_PATH, FILE), 500)
     page_resized = IMG.resize_image(pages[0])
     detection = Detection('yolov8m')
-    detection.run('test', page_resized, pages[0].size)
-    print(detection.format_to_json())
+    detection.run(page_resized, pages[0].size)
+    # print(detection.format_to_json(FILE))
     
     page_cropped = IMG.cut_page_info(pages[0])
+    page_cropped = detection.cut_page_info(pages[0])
     info_extraction = InfoExtraction('yolov8m')
-    info_extraction.run('test', page_cropped)
-    print(info_extraction.format_to_json())
+    info_extraction.run(page_cropped)
+    print(info_extraction.format_to_json(FILE))
