@@ -58,6 +58,13 @@ Since the panel with all important details of the construction plan (page number
     1. Multiple Augmentations: rotation, scale, translation, random flips. While I don't think they represent possible samples in future it should reduce overfitting
     2. Result are not satifactory especially low number of recall of rooms:  
     <img src="https://github.com/mlkonopelski/construction_plan_analyzer/blob/main/readme-resources/yolo-seg-result1.png" width="250"> <img src="https://github.com/mlkonopelski/construction_plan_analyzer/blob/main/readme-resources/yolo-seg-result2.png" width="250">
+1. Since construction blueprints have easy to distinguish lines I worked also on classical CV approach to find structures on images. Two things were tested (`utils/classic_algorithms.py`) but need more attention in order to process output data. To test those approaches building floor was cropped from entire image manually (but automatic solution wouldn't be difficult). 
+    1. Canny + HoughLines
+    Since walls are usually straight lines I used Canny algorithm to distinguish all outlines of shapes and HoughLine probability t0 leave only straight lines. The output is still messy and as next step I would use some unsupervised algorithm to leave only one line
+    <img src="https://github.com/mlkonopelski/construction_plan_analyzer/blob/main/readme-resources/cv-canny2hough.png" width="400">
+    1. Watershed segmentation
+    Any grayscale image can be viewed as a topographic surface where high intensity denotes peaks and hills while low intensity denotes valleys. Construction blueprints seems natural for this purpose since there is high contrast between walls and background. As a next step I would test two things (which I didn't have time to do): a) clustering algorithm or more probable b) classical classification were each sample would be cropped from large plan
+    <img src="https://github.com/mlkonopelski/construction_plan_analyzer/blob/main/readme-resources/cv-watershed.png" width="400">
 1. This approach is kinda crazy. Looking at those PDF I realized that they are so big because they include vectors so all the details like walls and text. I don't know how to do it with python but I extracted those vectors using Inkscape:  
 <img src="https://github.com/mlkonopelski/construction_plan_analyzer/blob/main/readme-resources/inkscape-ps.png" width="250">  
 and the underlying data looks like this:  
