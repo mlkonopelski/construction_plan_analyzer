@@ -4,17 +4,17 @@
 ------------------------------    
 
 ## TL;DR
-The easiest way to run this system is first to visit [Hello TrueBuilt](http://18.184.182.126) and check if API is working (My EC2 could stop because some maintance or exceeding treshold)
+The easiest way to run this system is first to visit [Hello TrueBuilt](http://http://52.59.220.149) and check if API is working (My EC2 could stop because some maintance or exceeding treshold)
 
 Clone this repository: `https://github.com/mlkonopelski/construction_plan_analyzer.git` or use or own example .pdf 
 
 ### Page Info retrieval:
 ```
-curl -X POST -F "file=@data/test/A-492.pdf" -F "find_page_info_method=detection" -H "authorization: Bearer TOKEN" http://18.184.182.126/page_info/
+curl -X POST -F "file=@data/test/A-492.pdf" -F "find_page_info_method=detection" -H "authorization: Bearer TOKEN" http://52.59.220.149/page_info/
 ```   
 ### Rooms detector
 ```
-curl -X POST -F "file=@data/test/A-492.pdf"  -H "authorization: Bearer TOKEN" http://18.184.182.126/rooms/
+curl -X POST -F "file=@data/test/A-492.pdf"  -H "authorization: Bearer TOKEN" http://52.59.220.149/rooms/
 ```   
 
 the token was provided by email to: **Vin**. The inferance can take a bit of time because I used cheap t2.large.
