@@ -36,7 +36,75 @@ While the time was constrained I tried to develop the app to achieve two goals:
 1. API and DevOps of reasonable advancement 
 
 # Results
-The results...
+## Page Info retrieval
+I'm quite satisfied with how the algorithms which:
+1) finds the panel with information 
+2) detects bbox of particular detail
+3) perform OCR
+
+### A-492
+1. detection on panel  
+<img src="https://github.com/mlkonopelski/construction_plan_analyzer/blob/main/readme-resources/A-192_det_panel.png" width="400">
+1. json result 
+```json
+{
+  "imageId": "A-492.pdf",
+  "sheet_name": "ENLARGED RESTROOMS MARQUAND L2 & L3",
+  "sheet_number": "A-492",
+  "revision": [
+    {
+      "number": 2,
+      "date": "2023-03-31",
+      "description": "100% DD"
+    }
+  ]
+}
+```
+There is still a small bug because EasyOCR doesn't correctly OCR this line even if it looks pretty clear:    
+<img src="https://github.com/mlkonopelski/construction_plan_analyzer/blob/main/readme-resources/A-192-rev-details.jpg" width="600"> 
+log: `Missing 1 or more keys from revision: {'date': '2022-11-23', 'description': '100% SD'}`
+
+### _13
+It was int training set but since it has a different structure of that panel I decided to include it here as prediction also
+1. detection on panel  
+<img src="https://github.com/mlkonopelski/construction_plan_analyzer/blob/main/readme-resources/_13_det_panel.png" width="400">   
+While there are more potential bboxes for Revision I added a safety feature that counts elements and == 3
+
+2. json result
+```json
+{
+  "imageId": "_13.pdf",
+  "sheet_name": "LANDSCAPE PLAN PENTHOUSE",
+  "sheet_number": "LO11",
+  "revision": [
+    {
+      "number": 3,
+      "description": "PERMIT SUBMISSION",
+      "date": "2022-09-30"
+    },
+    {
+      "number": 4,
+      "description": "95% CD",
+      "date": "2022-12-02"
+    },
+    {
+      "number": 2,
+      "description": "50% CD",
+      "date": "2022-07-15"
+    },
+    {
+      "number": 1,
+      "description": "100% DD",
+      "date": "2022-04-29"
+    }
+  ]
+}
+```
+
+## Rooms detection
+TBH I'm not happy with the results. My approach was too basic to solve the task with such limited amount of training data.
+
+<img src="https://github.com/mlkonopelski/construction_plan_analyzer/blob/main/readme-resources/yolo-seg-result1.png" width="400">
 
 # In-depth ML
 ## Approaches
@@ -64,9 +132,9 @@ Since the panel with all important details of the construction plan (page number
     <img src="https://github.com/mlkonopelski/construction_plan_analyzer/blob/main/readme-resources/cv-canny2hough.png" width="400">
     1. Watershed segmentation
     Any grayscale image can be viewed as a topographic surface where high intensity denotes peaks and hills while low intensity denotes valleys. Construction blueprints seems natural for this purpose since there is high contrast between walls and background. As a next step I would test two things (which I didn't have time to do): a) clustering algorithm or more probable b) classical classification were each sample would be cropped from large plan
-    <img src="https://github.com/mlkonopelski/construction_plan_analyzer/blob/main/readme-resources/cv-watershed.png" width="400">
+    <img src="https://github.com/mlkonopelski/construction_plan_analyzer/blob/main/readme-resources/cv-watershed.jpg" width="400">
 1. This approach is kinda crazy. Looking at those PDF I realized that they are so big because they include vectors so all the details like walls and text. I don't know how to do it with python but I extracted those vectors using Inkscape:  
-<img src="https://github.com/mlkonopelski/construction_plan_analyzer/blob/main/readme-resources/inkscape-ps.png" width="250">  
+<img src="https://github.com/mlkonopelski/construction_plan_analyzer/blob/main/readme-resources/inkscape-ps.jpg" width="250">  
 and the underlying data looks like this:  
 <img src="https://github.com/mlkonopelski/construction_plan_analyzer/blob/main/readme-resources/inkscape-vectors1.png" width="200"><img src="https://github.com/mlkonopelski/construction_plan_analyzer/blob/main/readme-resources/inkscape-vectors2.png" width="200"><img src="https://github.com/mlkonopelski/construction_plan_analyzer/blob/main/readme-resources/inkscape-vectors3.png" width="200">   
 I don't have expertise but maybe it can be used with semi-suprvised learning to find walls and later build rooms inside
@@ -75,7 +143,7 @@ I don't have expertise but maybe it can be used with semi-suprvised learning to 
 As a easier solution I firstly cut that panel at size common for all training samples. The bbox detection of it was created in case that panel changes position.
 1. All 7 training examples were slightly augmented and used for training bounding boxes. I tried YOLOv8 nano, small and medium and surprisingly only medium was giving good results (I anticipated that nano would be suffficient). 
 The model gives sufficient results on `A-192` and `A-492` test images:  
-<img src="https://github.com/mlkonopelski/construction_plan_analyzer/blob/main/data/predictions/page-info-det/A-192.png" width="200"> <img src="https://github.com/mlkonopelski/construction_plan_analyzer/blob/main/data/predictions/page-info-det/A-492.png" width="200">
+<img src="https://github.com/mlkonopelski/construction_plan_analyzer/blob/main/readme-resources/A-192_det_panel.png" width="200"> <img src="https://github.com/mlkonopelski/construction_plan_analyzer/blob/main/readme-resources/A-492_det_panel.png" width="200">
 
 
 

@@ -167,6 +167,7 @@ class InfoExtraction:
             revision['description'] = result[1]
         
         if not len(revision.keys()) == 3:
+            # print(f'Missing 1 or more keys from revision: {revision}')
             revision = {}
         return revision
 
@@ -198,7 +199,7 @@ class InfoExtraction:
                     elif names[cls_] == 'revision':
                         img_to_ocr = img.crop((box[0], box[1], box[2], box[3]))
                         revision = self._ocr_revisions(img_to_ocr)
-                        if revision: # In case revision is empty bbox
+                        if revision and revision not in revisions: # In case revision is empty bbox or there are 2 bouding boxes on the same text
                             revisions.append(revision)
             
             page_info['revision'] = revisions                      
@@ -282,7 +283,6 @@ async def page_info_view(file: UploadFile = File(...),
                 page_cropped = IMG.cut_page_info(page)
             elif find_page_info_method == 'detection':
                 page_cropped = tools.detection.cut_page_info(page)
-                page_cropped.save('page_cropped.jpg', 'JPEG')
             tools.info_extraction.run(page_cropped)
             r_json = tools.info_extraction.format_to_json(file.filename)
 
@@ -302,16 +302,19 @@ if __name__ == '__main__':
     FILE = 'A-192.pdf' # A-192.pdf, A-492.pdf
     TEST_PATH = os.path.join('data', 'test')
     
-    FILE = '_13.pdf'
-    TEST_PATH = 'data/original/rooms'
+    # FILE = '_13.pdf'
+    # TEST_PATH = 'data/original/rooms'
 
     pages = convert_from_path(os.path.join(TEST_PATH, FILE), 500)
+    
+    # FIND ROOMS
     page_resized = IMG.resize_image(pages[0])
     detection = Detection('yolov8m')
     detection.run(page_resized, pages[0].size)
     # print(detection.format_to_json(FILE))
     
-    page_cropped = IMG.cut_page_info(pages[0])
+    # FIND PAGE INFO
+    # page_cropped = IMG.cut_page_info(pages[0])
     page_cropped = detection.cut_page_info(pages[0])
     info_extraction = InfoExtraction('yolov8m')
     info_extraction.run(page_cropped)
