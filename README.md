@@ -104,9 +104,13 @@ While there are more potential bboxes for Revision I added a safety feature that
 ```
 
 ## Rooms detection
-TBH I'm not happy with the results. My approach was too basic to solve the task with such limited amount of training data.
-
+TBH I'm not happy with the results. My approach was too basic to solve the task with such limited amount of training data.   
 <img src="https://github.com/mlkonopelski/construction_plan_analyzer/blob/main/readme-resources/yolo-seg-result1.png" width="400">
+
+However the model learned the basic features what can be seen on training samples of different kinds so it's clearly a problem with generalization. 
+
+<img src="https://github.com/mlkonopelski/construction_plan_analyzer/blob/main/readme-resources/yolo-seg-result3.png" width="400">
+<img src="https://github.com/mlkonopelski/construction_plan_analyzer/blob/main/readme-resources/yolo-seg-result4.png" width="400">
 
 # In-depth ML
 ## Approaches
