@@ -7,7 +7,7 @@ import numpy as np
 from dateutil.parser import parse
 from fastapi import (Depends, FastAPI, File, Header, HTTPException, Request,
                      UploadFile)
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from pdf2image import convert_from_bytes, convert_from_path
 from PIL import Image
@@ -21,17 +21,56 @@ from enum import Enum
 
 
 class IMG:
+    """
+    Helper module to read PDF file from bytes and
+    a) resize it, or
+    b) crop it
+    """
     def __init__(self, bytes_string: str) -> None:
+        """Each IMG object is whole PDF. 
+        main attibute: "pages" - If pdf includes more pages it's necesary to loop through this attibute
+                     to access each individual Image.
+
+        Args:
+            bytes_string (str): object read by API. 
+        """
         self.pdf = bytes_string
         self.pages = convert_from_bytes(self.pdf)
     
     @staticmethod
-    def resize_image(page: Image, target_size: Tuple[int, int] = (2400,  1800)):
+    def resize_image(page: Image, target_size: Tuple[int, int] = (2400,  1800)) -> Image:
+        """Original PDF files are super large therefore this handy method helps resize them
+        to popular format. Majority of PDF files came in 24kx18k but it's not a rule. Since 
+        majority of ML algorithms need fixed size I used it. 
+        If only u/YOLO will be used the YOLO object already have functionality to resize image
+        to target width (multiply of 32). 
+
+        Args:
+            page (Image): Image we want to resize
+            target_size (Tuple[int, int], optional): Output size in pixels. Defaults to (2400,  1800).
+
+        Returns:
+            Image: Same image as page but resized. 
+        """
         return page.resize(target_size, Image.Resampling.LANCZOS)
     
     @staticmethod
     def cut_page_info(page: Image, WH:Tuple[int]=(2000, 4000), WH_RATIO: Union[Tuple[int], None]=None) -> Image:
+        """Before developing "smart" way of finding Page Panel I used this method to do it fixed way since
+        Page Panel was always right down corner and it doesn't matter the original ratio training samples 
+        always were good with 2000x4000 cut-out.
+        However, I guess FAST API is resizing pictures automaticlly using `File` so the procedure didn't receive
+        PDF of original size 24kx18k and much lower therefore fixed cut-off coudn't be used anymore and not 
+        the method `cut_page_info` is part of `Detection` interface.
 
+        Args:
+            page (Image): _description_
+            WH (Tuple[int], optional): _description_. Defaults to (2000, 4000).
+            WH_RATIO (Union[Tuple[int], None], optional): _description_. Defaults to None.
+
+        Returns:
+            Image: PIL cropped image
+        """
         # PFD comes with different size from curl than original. #TODO: Explore it
         # page = page.resize((2400,  1800), Image.Resampling.LANCZOS)
         # w_ratio, h_ratio is typical ratio for panel
@@ -53,20 +92,40 @@ class IMG:
 
 
 class Detection:
+    """Main interface to detect rooms and Page Info panel using ml model.
+    """
     
     def __init__(self, algorithm: str) -> None:
+        """Each detection object should use only one detection algorithm.
+        Args:
+            algorithm (str): Name of algorithm to use. While there were many tested for production is only `yolov8m` available now.
+        """
         
         self.algorithm = algorithm
         self._init_model()
         
     def _init_model(self):
+        """As of now only ultralytics interface for model is implemented therefore `YOLO` object is used.
+        In future if models from Ultralytics/MMOpenLabs/etc will be implemented it will be neccessary to use
+        `YOLOSegmentation` which is e.g. in `ml_models/yolo_seg/yolo_seg.py`
+        """
         assert self.algorithm in ['yolov8m'], "Models implemented for now: yolov8m"
         
         if self.algorithm == 'yolov8m':
             self.model = YOLO(os.path.join('.models', 'yolov8m-seg.pt'))
     
     
-    def cut_page_info(self, img: Image):
+    def cut_page_info(self, img: Image) -> Image:
+        """Implemented model: yolov8m-seg.pt gives 2 classes: "rooms" and "label" which is location of Page Info Panel.
+        This procedure runs through bounding boxes of this "label" and choose the one with highest confidance.
+        Page Info panel is cut using x1,y1 of bboxes and W,H of whole Image is it usually fit the right and down axis.
+
+        Args:
+            img (Image): Original Image in size 2400x1800 or simmilar for besdt results.
+
+        Returns:
+            Image: Cropped Image
+        """
         
         W, H = img.size
         result = self.model(img)[0]
@@ -91,6 +150,19 @@ class Detection:
             
     
     def run(self, img: Image, orig_size: Tuple[int, int]) -> None:
+        """Main procedure for finding Rooms/Label(Page Info Panel) in Construction Blueprints.
+        It returns the final json
+        {
+            'roomId': 'room_ix' - ix is iterable int from 0 
+            'vertices': mask in format [(x1, y1), (x2, y1), (x3, y1)],
+            'confidence': conf of prediction
+        }
+        Only masks with confidence > 50% are included in final json. 
+
+        Args:
+            img (Image): Resized or Not image for prediction and processing
+            orig_size (Tuple[int, int]): Is used to return x,y points of original file and not resized/normalized
+        """
             
         result = self.model(img)[0]
         
@@ -115,6 +187,9 @@ class Detection:
         self.det = det
         
     def format_to_json(self, file_name: str) -> Dict:
+        """Helper function to format json before returning it.
+        ImageId - flows from API and original .pdf name
+        """
         
         json = {
             "type": "rooms",
@@ -127,17 +202,38 @@ class Detection:
 
 
 class InfoExtraction:
-    def __init__(self, algorithm: str = 'yolov8m') -> None:
+    """Main interface to OCR import details from Page Info panel using ml models.
+    """
+    def __init__(self, algorithm: str = 'yolov8m', use_gpu: bool = False) -> None:
+        """Each object should process images using only one algorithm. 
+
+        Args:
+            algorithm (str, optional):  Name of algorithm to use. While there were many tested for production is only `yolov8m` available now. Defaults to 'yolov8m'.
+            use_gpu (bool, optional): While working on it I didn't use GPU therefore everything run on CPU.
+                                      However if on this machine CUDA was available EasyOCR should also use GPU. Defaults to False.
+        """
         self.algorithm = algorithm
         self._init_model()
-        self.reader = easyocr.Reader(['en'], gpu=False)
+        self.reader = easyocr.Reader(['en'], gpu=use_gpu)
         
     def _init_model(self):
+        """As of now only ultralytics interface for model is implemented therefore `YOLO` object is used.
+        In future if models from Ultralytics/MMOpenLabs/etc will be implemented it will be neccessary to use
+        `YOLOSegmentation` which is e.g. in `ml_models/yolo_det/yolo_det.py`
+        """
         assert self.algorithm in ['yolov8m'], "Models implemented for now: yolov8m"
         if self.algorithm == 'yolov8m':
             self.model = YOLO(os.path.join('.models', 'yolov8m-det.pt'))
             
     def _ocr_img(self, img: Image) -> str:
+        """OCR croped images of labels: sheet_number or sheet_name
+
+        Args:
+            img (Image): Well cropped Image around text we want to OCR
+
+        Returns:
+            str: Text inside img (no processing since we don't have knowldge of possible formats)
+        """
         
         result_str = ''        
 
@@ -148,7 +244,27 @@ class InfoExtraction:
     
         return result_str.lstrip()  # remove empty space in case result is just one word
     
-    def _ocr_revisions(self, img: Image) -> str:
+    def _ocr_revisions(self, img: Image) -> Dict:
+        """Since revision bounding box insludes 3 details:
+        a) number -> validate if int
+        b) date -> validate if date of any format
+        c) description -> assume anything can go here
+        it needs own proceesing where we make sure all 3 details are OCRed. 
+        
+        FIXME: I foudn out that EasyOCR didn't do good Job in case of 'A-192.pdf' since it 
+        didn't OCRed '1' in string and therefore the whole revision box failed since it didn't
+        include 3 elements. 
+
+        Args:
+            img (Image): Nicely cropped image
+
+        Returns:
+            Dict: {
+                'number': int,
+                'date': date['%Y-%m-%d'],
+                'description': str
+            }
+        """
 
         revision = {}
         gray = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2GRAY)
@@ -172,6 +288,20 @@ class InfoExtraction:
         return revision
 
     def run(self, img: Image) -> None:
+        """Main procedure for finding details from Page Info
+        It returns the final json
+        {
+            'sheet_number': string,
+            'sheet_name': string,
+            'revision': List of dictionaries {'number': int, 'date': date['%Y-%m-%d'], 'description': str} since there are multiple lines
+        }
+        To be included in final json:
+            1) Bunding box needs to have confidence > 50% and
+            2) Only 1 bbox with highest conf is stored for sheet number and name
+
+        Args:
+            img (Image): Cropped Page Info panel.
+        """
 
         names = self.model.names
         result = self.model(img)[0]
@@ -209,6 +339,9 @@ class InfoExtraction:
         self.page_info = page_info
         
     def format_to_json(self, file_name: str) -> Dict:
+        """Helper function to format json before returning it.
+        ImageId - flows from API and original .pdf name
+        """
         json = {"imageId": file_name}
         json.update(self.page_info)
         return json
@@ -294,6 +427,8 @@ async def page_info_view(file: UploadFile = File(...),
 
 if __name__ == '__main__':
     
+    """Local test of Main procedure
+    """
 
     Image.MAX_IMAGE_PIXELS = None
 
