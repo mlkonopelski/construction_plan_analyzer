@@ -4,8 +4,7 @@
 ------------------------------    
 
 ## TL;DR
-The easier way to run this system is by:
-visit [Hello TrueBuilt](http://18.184.182.126) to check if API is working (My EC2 could stop because some maintance or exceeding treshold)
+The easiest way to run this system is first to visit [Hello TrueBuilt](http://18.184.182.126) and check if API is working (My EC2 could stop because some maintance or exceeding treshold)
 
 Clone this repository: `https://github.com/mlkonopelski/construction_plan_analyzer.git` or use or own example .pdf 
 
@@ -44,7 +43,7 @@ I'm quite satisfied with how the algorithms which:
 
 ### A-492
 1. detection on panel  
-<img src="https://github.com/mlkonopelski/construction_plan_analyzer/blob/main/readme-resources/A-192_det_panel.png" width="400">   
+<img src="https://github.com/mlkonopelski/construction_plan_analyzer/blob/main/readme-resources/A-192_det_panel.png" width="300">   
 
 1. json result   
 ```json
@@ -135,12 +134,12 @@ Since the panel with all important details of the construction plan (page number
 1. Since construction blueprints have easy to distinguish lines I worked also on classical CV approach to find structures on images. Two things were tested (`utils/classic_algorithms.py`) but need more attention in order to process output data. To test those approaches building floor was cropped from entire image manually (but automatic solution wouldn't be difficult). 
     1. Canny + HoughLines
     Since walls are usually straight lines I used Canny algorithm to distinguish all outlines of shapes and HoughLine probability t0 leave only straight lines. The output is still messy and as next step I would use some unsupervised algorithm to leave only one line
-    <img src="https://github.com/mlkonopelski/construction_plan_analyzer/blob/main/readme-resources/cv-canny2hough.png" width="400">
+    <img src="https://github.com/mlkonopelski/construction_plan_analyzer/blob/main/readme-resources/cv-canny2hough.jpg" width="400">
     1. Watershed segmentation
     Any grayscale image can be viewed as a topographic surface where high intensity denotes peaks and hills while low intensity denotes valleys. Construction blueprints seems natural for this purpose since there is high contrast between walls and background. As a next step I would test two things (which I didn't have time to do): a) clustering algorithm or more probable b) classical classification were each sample would be cropped from large plan
     <img src="https://github.com/mlkonopelski/construction_plan_analyzer/blob/main/readme-resources/cv-watershed.jpg" width="400">
 1. This approach is kinda crazy. Looking at those PDF I realized that they are so big because they include vectors so all the details like walls and text. I don't know how to do it with python but I extracted those vectors using Inkscape:  
-<img src="https://github.com/mlkonopelski/construction_plan_analyzer/blob/main/readme-resources/inkscape-ps.jpg" width="250">  
+<img src="https://github.com/mlkonopelski/construction_plan_analyzer/blob/main/readme-resources/inkscape-ps.png" width="250">  
 and the underlying data looks like this:  
 <img src="https://github.com/mlkonopelski/construction_plan_analyzer/blob/main/readme-resources/inkscape-vectors1.png" width="200"><img src="https://github.com/mlkonopelski/construction_plan_analyzer/blob/main/readme-resources/inkscape-vectors2.png" width="200"><img src="https://github.com/mlkonopelski/construction_plan_analyzer/blob/main/readme-resources/inkscape-vectors3.png" width="200">   
 I don't have expertise but maybe it can be used with semi-suprvised learning to find walls and later build rooms inside
