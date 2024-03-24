@@ -1,4 +1,5 @@
-# EC2 instance: ubuntu@ec2-18-184-182-126.eu-central-1.compute.amazonaws.com
+# EC2 instance: aws_instance_address
+ssh -i "~/.ssh/true-built-ai.pem" ubuntu@aws_instance_address
 
 sudo apt-get update
 
@@ -22,6 +23,10 @@ pip3 install -r requirements.txt
 sudo apt install -y nginx
 sudo vim /etc/nginx/sites-enabled/fastapi_nginx
 sudo service nginx restart
+
+# FROM LOCAL MACHINE
+scp -i "~/.ssh/true-built-ai.pem" .TOKEN ubuntu@aws_instance_address:/home/ubuntu/construction_plan_analyzer/.TOKEN
+scp -i "~/.ssh/true-built-ai.pem" -r .models ubuntu@eaws_instance_address:/home/ubuntu/construction_plan_analyzer/
 
 tmux new -s fastapi_window
 /home/ubuntu/.local/bin/uvicorn main:app
