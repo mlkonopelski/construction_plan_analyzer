@@ -44,8 +44,9 @@ I'm quite satisfied with how the algorithms which:
 
 ### A-492
 1. detection on panel  
-<img src="https://github.com/mlkonopelski/construction_plan_analyzer/blob/main/readme-resources/A-192_det_panel.png" width="400">
-1. json result 
+<img src="https://github.com/mlkonopelski/construction_plan_analyzer/blob/main/readme-resources/A-192_det_panel.png" width="400">   
+
+1. json result   
 ```json
 {
   "imageId": "A-492.pdf",
@@ -60,6 +61,7 @@ I'm quite satisfied with how the algorithms which:
   ]
 }
 ```
+   
 There is still a small bug because EasyOCR doesn't correctly OCR this line even if it looks pretty clear:    
 <img src="https://github.com/mlkonopelski/construction_plan_analyzer/blob/main/readme-resources/A-192-rev-details.jpg" width="600"> 
 log: `Missing 1 or more keys from revision: {'date': '2022-11-23', 'description': '100% SD'}`
