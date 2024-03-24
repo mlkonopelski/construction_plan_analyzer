@@ -4,7 +4,7 @@
 ------------------------------    
 
 ## TL;DR
-The easiest way to run this system is first to visit [Hello TrueBuilt](http://http://52.59.220.149) and check if API is working (My EC2 could stop because some maintance or exceeding treshold)
+The easiest way to run this system is first to visit [Hello TrueBuilt](http://52.59.220.149) and check if API is working (My EC2 could stop because some maintance or exceeding treshold)
 
 Clone this repository: `https://github.com/mlkonopelski/construction_plan_analyzer.git` or use or own example .pdf 
 
