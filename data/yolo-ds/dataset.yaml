@@ -1,0 +1,7 @@
+names:
+- label
+- room
+nc: 2
+path: /Users/mkonopelski/Projects/research/analyze_construction_plans/data/yolo-ds/
+train: train/images
+val: val/images

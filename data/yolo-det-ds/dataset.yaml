@@ -1,0 +1,8 @@
+names:
+- revision
+- sheet_name
+- sheet_number
+nc: 3
+path: /Users/mkonopelski/Projects/research/analyze_construction_plans/data/yolo-det-ds/
+train: train/images
+val: val/images
